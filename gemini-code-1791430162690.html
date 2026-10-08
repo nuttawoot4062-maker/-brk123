@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>รายงานการหาเงินฝากของคณะกรรมการ สหกรณ์อิสลามบารอกะฮฺ จำกัด</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Firebase SDK (v10.x) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // ✅ ค่าตั้งค่า Firebase จากโปรเจกต์ brk-71b41 ของคุณ
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXiWPQEwEpYgebOJN6JEU_lEuywcPMtFk",
+            authDomain: "brk-71b41.firebaseapp.com",
+            projectId: "brk-71b41",
+            storageBucket: "brk-71b41.firebasestorage.app",
+            messagingSenderId: "1021892598713",
+            appId: "1:1021892598713:web:008943b2408d4d73ee7468"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.db = db;
+        window.doc = doc;
+        window.setDoc = setDoc;
+        window.onSnapshot = onSnapshot;
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Sarabun', sans-serif; background-color: #f0f9ff; }
+        .modal { transition: opacity 0.25s ease; }
+        body.modal-active { overflow-x: hidden; overflow-y: visible !important; }
+    </style>
+</head>
+<body class="bg-sky-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header Section -->
+    <header class="bg-gradient-to-r from-sky-700 via-sky-600 to-indigo-800 text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-white p-2 rounded-full text-sky-700 text-2xl shadow">
+                    <i class="fa-solid fa-building-columns"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold tracking-wide">รายงานการหาเงินฝากของคณะกรรมการ สหกรณ์อิสลามบารอกะฮฺ จำกัด</h1>
+                    <p class="text-xs text-sky-100 flex items-center gap-1 mt-0.5">
+                        <i class="fa-regular fa-clock"></i> เวลาจริง: <span id="liveClock" class="font-semibold"></span>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2 flex-wrap justify-center">
+                <label class="text-sm font-medium bg-sky-800/60 px-3 py-1.5 rounded-lg flex items-center gap-2 border border-sky-400/30">
+                    <i class="fa-solid fa-calendar-days text-amber-300"></i> เลือกปี พ.ศ.:
+                    <select id="yearSelect" class="bg-white text-sky-900 font-bold rounded px-2 py-1 focus:outline-none cursor-pointer">
+                    </select>
+                </label>
+
+                <button onclick="addMember()" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow transition active:scale-95">
+                    <i class="fa-solid fa-user-plus"></i> เพิ่มกรรมการ
+                </button>
+                
+                <button onclick="saveDataToCloud()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow transition active:scale-95">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> บันทึกข้อมูลลงคลาวด์
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Notification Toast -->
+    <div id="saveToast" class="fixed bottom-5 right-5 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-emerald-400 transition-all duration-300 transform translate-y-20 opacity-0 z-50 pointer-events-none">
+        <i class="fa-solid fa-circle-check text-xl"></i>
+        <div>
+            <p class="font-bold text-sm">บันทึกข้อมูลสำเร็จ!</p>
+            <p class="text-xs text-emerald-100">ข้อมูลถูกอัปเดตไปยังทุกเครื่องแบบ Realtime แล้ว</p>
+        </div>
+    </div>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full space-y-6">
+
+        <!-- Summary Cards Section -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-emerald-500 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-500 font-semibold">ยอดรวมเงินฝากสะสมปีนี้</p>
+                    <p class="text-2xl font-bold text-emerald-600 mt-1" id="statTotalDeposit">0 บาท</p>
+                </div>
+                <div class="bg-emerald-100 text-emerald-600 p-3 rounded-full text-xl flex items-center justify-center">
+                    <i class="fa-solid fa-money-bill-wave"></i>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-purple-500 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-500 font-semibold">ยอดรวมหุ้นสะสมปีนี้</p>
+                    <p class="text-2xl font-bold text-purple-600 mt-1" id="statTotalShare">0 บาท</p>
+                </div>
+                <div class="bg-purple-100 text-purple-600 p-3 rounded-full text-xl flex items-center justify-center">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-sky-500 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-500 font-semibold">ยอดรวมการหาทั้งหมด</p>
+                    <p class="text-2xl font-bold text-sky-600 mt-1" id="statGrandTotal">0 บาท</p>
+                </div>
+                <div class="bg-sky-100 text-sky-600 p-3 rounded-full text-xl flex items-center justify-center">
+                    <i class="fa-solid fa-vault"></i>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-amber-500 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-500 font-semibold">อันดับ 1 สูงสุด</p>
+                    <p class="text-sm font-bold text-slate-700 truncate max-w-[150px] mt-1" id="statTopPerformer">-</p>
+                    <p class="text-xs text-amber-600 font-bold" id="statTopAmount">0 บาท</p>
+                </div>
+                <div class="bg-amber-100 text-amber-600 p-3 rounded-full text-xl flex items-center justify-center">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Smart Math Section -->
+        <section class="bg-white rounded-xl shadow-md p-5 border border-sky-100">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center pb-4 border-b gap-2">
+                <div>
+                    <h2 class="text-lg font-bold text-sky-900 flex items-center gap-2">
+                        <i class="fa-solid fa-calculator text-indigo-600"></i> สถิติและการคำนวณภาพรวม
+                    </h2>
+                </div>
+                <button onclick="toggleChart()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded flex items-center gap-1 shadow">
+                    <i class="fa-solid fa-chart-pie"></i> สลับมุมมองกราฟ
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
+                <div class="space-y-3">
+                    <div class="p-3 bg-slate-50 rounded-lg border">
+                        <span class="text-xs font-semibold text-slate-500">ยอดเฉลี่ยต่อกรรมการ:</span>
+                        <p class="text-lg font-bold text-indigo-700" id="mathAvg">0 บาท</p>
+                    </div>
+                    <div class="p-3 bg-slate-50 rounded-lg border">
+                        <span class="text-xs font-semibold text-slate-500">ค่าเบี่ยงเบนมาตรฐาน (SD):</span>
+                        <p class="text-base font-bold text-slate-700" id="mathSD">0</p>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 h-64 relative">
+                    <canvas id="analyticsChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Data Table -->
+        <section class="bg-white rounded-xl shadow-md overflow-hidden border border-slate-200">
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs md:text-sm text-left border-collapse">
+                    <thead>
+                        <tr class="bg-sky-800 text-white font-semibold text-center border-b border-sky-900">
+                            <th class="py-3 px-2 border-r border-sky-700 w-10">ลำดับ</th>
+                            <th class="py-3 px-3 border-r border-sky-700 text-left min-w-[180px]">รายนามคณะกรรมการ</th>
+                            <th class="py-3 px-2 border-r border-sky-700 min-w-[110px] bg-purple-700">ยอดรวมหุ้น (บาท)</th>
+                            <th class="py-3 px-2 border-r border-sky-700 min-w-[110px] bg-emerald-700">ยอดรวมเงินฝาก (บาท)</th>
+                            <th class="py-3 px-2 border-r border-sky-700 min-w-[120px] bg-sky-900">รวมทั้งหมด (บาท)</th>
+                            <th class="py-3 px-2 border-r border-sky-700 min-w-[80px]">สัดส่วน (%)</th>
+                            <th class="py-3 px-2 min-w-[200px]">จัดการข้อมูล</th>
+                        </tr>
+                    </thead>
+                    <tbody id="memberTableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal Form จัดการข้อมูลรายเดือน -->
+    <div id="editModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full my-8 overflow-hidden transform transition-all">
+            <div class="bg-sky-800 px-6 py-4 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square"></i> แก้ไขข้อมูลรายเดือน: <span id="modalMemberName" class="text-amber-300"></span>
+                </h3>
+                <button onclick="closeModal()" class="text-white hover:text-red-300 text-xl font-bold">&times;</button>
+            </div>
+            
+            <div class="p-6 max-h-[75vh] overflow-y-auto space-y-4">
+                <p class="text-xs text-slate-500 italic">* กรอกยอดหุ้นและเงินฝากแยกตามรายเดือน ข้อมูลจะถูกรวมอัตโนมัติ</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="monthlyInputsContainer"></div>
+            </div>
+
+            <div class="bg-slate-100 px-6 py-4 flex justify-between items-center border-t">
+                <span class="text-xs text-slate-500">บันทึกเพื่ออัปเดตไปยังทุกเครื่องทันที</span>
+                <div class="flex gap-2">
+                    <button onclick="closeModal()" class="px-4 py-2 bg-slate-300 hover:bg-slate-400 text-slate-700 rounded-lg text-xs font-bold">ยกเลิก</button>
+                    <button onclick="saveModalData()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1">
+                        <i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูล
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let appData = {};
+        let currentYear = 2569;
+        let activeMemberIndex = null;
+        let chartInstance = null;
+        let chartType = 'bar';
+
+        const initialCommittees = [
+            "นาย   อบี ยะลา", "นาย   วุฒิสาร เจสาสน์", "นาย ย่าโกบ สะสม", "นาย นิคม หิรัญ",
+            "นาย สนอง วังผล", "นาย ธีรศักดิ์ บุตรอีด", "นาย อำนวย บุตรหลำ", "นาย อุสมาน มะตัน",
+            "นาย พิชัย กิ่งหมัน", "นาย อับดุลเลาะห์ บรรดา", "นาย สาคร บำรุงศรี", "นาย อธิภัทร โยธารักษ์",
+            "นาย มะซากรี มาเเฮ", "นาย วิทยา เริงสมุทร"
+        ];
+        const months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+
+        window.onload = function() {
+            startClock();
+            setupYearSelect();
+            listenRealtimeData();
+        };
+
+        function startClock() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('liveClock').textContent = now.toLocaleDateString('th-TH', {
+                    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+            }, 1000);
+        }
+
+        function setupYearSelect() {
+            const select = document.getElementById('yearSelect');
+            for (let y = 2569; y <= 2580; y++) {
+                const opt = document.createElement('option');
+                opt.value = y; opt.textContent = y;
+                select.appendChild(opt);
+            }
+            select.value = currentYear;
+            select.addEventListener('change', (e) => {
+                currentYear = parseInt(e.target.value);
+                if (!appData[currentYear]) initDefaultYearData(currentYear);
+                renderTable();
+            });
+        }
+
+        // ระบบ Realtime Sync จาก Firebase Firestore
+        function listenRealtimeData() {
+            if (!window.db) {
+                setTimeout(listenRealtimeData, 500);
+                return;
+            }
+            window.onSnapshot(window.doc(window.db, "coop_data", "main_record"), (snapshot) => {
+                if (snapshot.exists()) {
+                    appData = snapshot.data();
+                } else {
+                    initDefaultYearData(currentYear);
+                }
+                renderTable();
+            });
+        }
+
+        function initDefaultYearData(year) {
+            appData[year] = initialCommittees.map(name => {
+                let mObj = { name: name, monthly: {} };
+                months.forEach(m => mObj.monthly[m] = { share: 0, deposit: 0 });
+                return mObj;
+            });
+        }
+
+        async function saveDataToCloud() {
+            if (window.db) {
+                try {
+                    await window.setDoc(window.doc(window.db, "coop_data", "main_record"), appData);
+                    showToast();
+                } catch (e) {
+                    alert("เกิดข้อผิดพลาดในการบันทึก: " + e.message);
+                }
+            } else {
+                alert("ระบบเชื่อมต่อ Cloud ยังไม่พร้อมใช้งาน");
+            }
+        }
+
+        function showToast() {
+            const toast = document.getElementById('saveToast');
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        }
+
+        function renderTable() {
+            const list = appData[currentYear] || [];
+            const tbody = document.getElementById('memberTableBody');
+            tbody.innerHTML = '';
+
+            let grandTotalDeposit = 0;
+            let grandTotalShare = 0;
+            let totalOverall = 0;
+
+            const memberTotals = list.map(m => {
+                let sumShare = 0, sumDeposit = 0;
+                Object.values(m.monthly || {}).forEach(v => {
+                    sumShare += Number(v.share || 0);
+                    sumDeposit += Number(v.deposit || 0);
+                });
+                const tot = sumShare + sumDeposit;
+                grandTotalShare += sumShare;
+                grandTotalDeposit += sumDeposit;
+                totalOverall += tot;
+                return { name: m.name, share: sumShare, deposit: sumDeposit, total: tot };
+            });
+
+            let topMember = { name: '-', total: 0 };
+
+            memberTotals.forEach((item, idx) => {
+                if (item.total > topMember.total) topMember = item;
+
+                const percent = totalOverall > 0 ? ((item.total / totalOverall) * 100).toFixed(2) : '0.00';
+                const tr = document.createElement('tr');
+                tr.className = idx % 2 === 0 ? 'bg-white hover:bg-sky-50/50' : 'bg-slate-50/70 hover:bg-sky-50/50';
+
+                tr.innerHTML = `
+                    <td class="py-2.5 px-2 text-center font-bold text-slate-500 border-r">${idx + 1}</td>
+                    <td class="py-2.5 px-3 font-semibold text-slate-800 border-r">${item.name}</td>
+                    <td class="py-2.5 px-2 text-right font-semibold text-purple-700 border-r bg-purple-50/30">${item.share.toLocaleString()}</td>
+                    <td class="py-2.5 px-2 text-right font-semibold text-emerald-700 border-r bg-emerald-50/30">${item.deposit.toLocaleString()}</td>
+                    <td class="py-2.5 px-2 text-right font-bold text-sky-900 border-r bg-sky-50/50">${item.total.toLocaleString()}</td>
+                    <td class="py-2.5 px-2 text-center text-xs font-semibold text-slate-600 border-r">${percent}%</td>
+                    <td class="py-2.5 px-2 text-center flex items-center justify-center gap-1.5">
+                        <button onclick="openModal(${idx})" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded text-xs font-bold transition shadow" title="แก้ไขยอดเงินรายเดือน">
+                            <i class="fa-solid fa-pen-to-square"></i> รายเดือน
+                        </button>
+                        <button onclick="editMemberName(${idx})" class="bg-sky-600 hover:bg-sky-700 text-white px-2 py-1 rounded text-xs font-bold transition shadow" title="แก้ไขชื่อ">
+                            <i class="fa-solid fa-user-pen"></i> แก้ไขชื่อ
+                        </button>
+                        <button onclick="deleteMember(${idx})" class="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 rounded text-xs font-bold transition shadow" title="ลบกรรมการ">
+                            <i class="fa-solid fa-trash-can"></i> ลบ
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // อัปเดตการ์ดสรุปผล
+            document.getElementById('statTotalDeposit').textContent = grandTotalDeposit.toLocaleString() + ' บาท';
+            document.getElementById('statTotalShare').textContent = grandTotalShare.toLocaleString() + ' บาท';
+            document.getElementById('statGrandTotal').textContent = totalOverall.toLocaleString() + ' บาท';
+            document.getElementById('statTopPerformer').textContent = topMember.name;
+            document.getElementById('statTopAmount').textContent = topMember.total.toLocaleString() + ' บาท';
+
+            // คำนวณ Smart Math & กราฟ
+            calculateMathAndChart(memberTotals);
+        }
+
+        // ฟังก์ชันแก้ไขชื่อกรรมการ
+        function editMemberName(index) {
+            const currentName = appData[currentYear][index].name;
+            const newName = prompt("กรุณาระบุชื่อ-นามสกุลใหม่:", currentName);
+            if (newName && newName.trim() !== "") {
+                appData[currentYear][index].name = newName.trim();
+                renderTable();
+                saveDataToCloud();
+            }
+        }
+
+        // ฟังก์ชันลบกรรมการ
+        function deleteMember(index) {
+            const name = appData[currentYear][index].name;
+            if (confirm(`คุณต้องการลบ "${name}" ออกจากรายการใช่หรือไม่?`)) {
+                appData[currentYear].splice(index, 1);
+                renderTable();
+                saveDataToCloud();
+            }
+        }
+
+        // ฟังก์ชันเพิ่มกรรมการท่านใหม่
+        function addMember() {
+            const newName = prompt("กรุณากรอกชื่อ-นามสกุล ของกรรมการท่านใหม่:");
+            if (newName && newName.trim() !== "") {
+                if (!appData[currentYear]) appData[currentYear] = [];
+                let mObj = { name: newName.trim(), monthly: {} };
+                months.forEach(m => mObj.monthly[m] = { share: 0, deposit: 0 });
+                appData[currentYear].push(mObj);
+                renderTable();
+                saveDataToCloud();
+            }
+        }
+
+        function calculateMathAndChart(memberTotals) {
+            const count = memberTotals.length;
+            if (count === 0) {
+                document.getElementById('mathAvg').textContent = '0 บาท';
+                document.getElementById('mathSD').textContent = '0';
+                if (chartInstance) chartInstance.destroy();
+                return;
+            }
+
+            const sum = memberTotals.reduce((a, b) => a + b.total, 0);
+            const avg = sum / count;
+
+            const variance = memberTotals.reduce((a, b) => a + Math.pow(b.total - avg, 2), 0) / count;
+            const sd = Math.sqrt(variance);
+
+            document.getElementById('mathAvg').textContent = avg.toLocaleString(undefined, {maximumFractionDigits:2}) + ' บาท';
+            document.getElementById('mathSD').textContent = sd.toLocaleString(undefined, {maximumFractionDigits:2});
+
+            renderChart(memberTotals);
+        }
+
+        function renderChart(data) {
+            const ctx = document.getElementById('analyticsChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: chartType,
+                data: {
+                    labels: data.map(d => d.name.replace('นาย ', '').trim()),
+                    datasets: [
+                        { label: 'หุ้น', data: data.map(d => d.share), backgroundColor: '#8b5cf6' },
+                        { label: 'เงินฝาก', data: data.map(d => d.deposit), backgroundColor: '#10b981' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: chartType === 'pie' || chartType === 'doughnut' ? {} : { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function toggleChart() {
+            chartType = chartType === 'bar' ? 'line' : 'bar';
+            renderTable();
+        }
+
+        function openModal(index) {
+            activeMemberIndex = index;
+            const member = appData[currentYear][index];
+            document.getElementById('modalMemberName').textContent = member.name;
+
+            const container = document.getElementById('monthlyInputsContainer');
+            container.innerHTML = '';
+
+            months.forEach(m => {
+                const mData = (member.monthly && member.monthly[m]) ? member.monthly[m] : { share: 0, deposit: 0 };
+                const div = document.createElement('div');
+                div.className = 'p-3 bg-slate-50 border rounded-xl space-y-2';
+                div.innerHTML = `
+                    <p class="font-bold text-xs text-sky-800 border-b pb-1"><i class="fa-solid fa-calendar-day"></i> เดือน ${m}</p>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <label class="text-gray-500 font-semibold block mb-0.5">หุ้น (บาท)</label>
+                            <input type="number" id="input_share_${m}" value="${mData.share}" class="w-full border rounded px-2 py-1 font-semibold text-purple-700 focus:outline-sky-500">
+                        </div>
+                        <div>
+                            <label class="text-gray-500 font-semibold block mb-0.5">เงินฝาก (บาท)</label>
+                            <input type="number" id="input_deposit_${m}" value="${mData.deposit}" class="w-full border rounded px-2 py-1 font-semibold text-emerald-700 focus:outline-sky-500">
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+
+            document.getElementById('editModal').classList.remove('hidden');
+            document.body.classList.add('modal-active');
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            document.body.classList.remove('modal-active');
+        }
+
+        function saveModalData() {
+            if (activeMemberIndex === null) return;
+            const member = appData[currentYear][activeMemberIndex];
+            if (!member.monthly) member.monthly = {};
+
+            months.forEach(m => {
+                const shareVal = parseFloat(document.getElementById(`input_share_${m}`).value) || 0;
+                const depositVal = parseFloat(document.getElementById(`input_deposit_${m}`).value) || 0;
+                member.monthly[m] = { share: shareVal, deposit: depositVal };
+            });
+
+            closeModal();
+            saveDataToCloud();
+        }
+    </script>
+</body>
+</html>
